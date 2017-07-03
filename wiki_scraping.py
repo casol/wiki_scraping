@@ -8,15 +8,15 @@ html = urlopen("https://en.wikipedia.org/wiki/List_of_museum_ships")
 bs_obj = BeautifulSoup(html, "html.parser")
 
 table = bs_obj.findAll("table", {"class": "wikitable"})[0]
-for t in table.findAll("tr"):
-    for link in t.findAll("a", href=re.compile("^(/wiki/)")):
-        if 'href' in link.attrs:
-            print(link.attrs['href'])
+rows = []
+# easy solution best solution ?
+for row in table.findAll("tr"):
+    rows.append(row)
 
-
-
-#rows = table.findAll("tr")
-#print(rows[1])
+print(rows[529])
+    #for link in t.findAll("a", href=re.compile("^(/wiki/)")):
+        #if 'href' in link.attrs:
+            #print(link.attrs['href'])
 
 
 """
