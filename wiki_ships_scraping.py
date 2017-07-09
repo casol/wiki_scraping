@@ -3,9 +3,11 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 from bs4 import BeautifulSoup
 import re
+import json
 
 
 def get_details(page_url):
+    """Print first paragraph and title."""
     try:
         html = urlopen('https://en.wikipedia.org'+page_url)
     except HTTPError:
@@ -29,7 +31,9 @@ def get_details(page_url):
 # call
 #get_details('/wiki/USS_Alabama_(BB-60)')
 
+
 def get_image():
+    """Find image link."""
     try:
         html = urlopen('https://en.wikipedia.org/wiki/MV_Abegweit_(1947)')
     except HTTPError:
@@ -44,17 +48,19 @@ def get_image():
         #print(td)
         for link in td.findAll("a", href=re.compile("^(/wiki/)")):
             if 'href' in link.attrs:
-                print('https://commons.wikimedia.org'+link.attrs['href'])
+                return 'https://commons.wikimedia.org'+link.attrs['href']
     except AttributeError:
         print('No Image There')
 
+#url = get_image()
 
-get_image()
 
+def get_image_detail():
+    try:
+        response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=extmetadata&titles=File%3aBrad_Pitt_at_Incirlik2.jpg&format=json').read().decode('utf-8')
+    except HTTPError:
+        return print('Page does not exist')
+    response_json = json.loads(response)
+    return response_json.get('query')
 
-"""
-By Rhvanwinkle (Own work) [CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0)], via Wikimedia Commons
-By Rhvanwinkle (Own work) [<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY-SA 3.0</a>], <a href="https://commons.wikimedia.org/wiki/File%3AAustralia_(schooner).jpg">via Wikimedia Commons</a>
-By USN [Public domain], <a href="https://commons.wikimedia.org/wiki/File%3AAlabama-iii.jpg">via Wikimedia Commons</a>
-By USN [Public domain], via Wikimedia Commons
-"""
+print(get_image_detail())
