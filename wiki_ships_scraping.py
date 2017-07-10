@@ -52,15 +52,27 @@ def get_image():
     except AttributeError:
         print('No Image There')
 
-#url = get_image()
+url = get_image()
+print(url)
 
 
 def get_image_detail():
     try:
-        response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=extmetadata&titles=File%3aBrad_Pitt_at_Incirlik2.jpg&format=json').read().decode('utf-8')
+        response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=extme'
+                           'tadata&titles=File:Mikhail_Kutuzov_(cruiser).jpg&format=json').read().decode('utf-8')
     except HTTPError:
         return print('Page does not exist')
     response_json = json.loads(response)
-    return response_json.get('query')
+    detail = list()
+    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['DateTimeOriginal']['value'])
+    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['ImageDescription']['value'])
+    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['Artist']['value'])
+    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['UsageTerms']['value'])
+    try:
+        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseUrl']['value'])
+    except KeyError:
+        pass
+    return detail
 
 print(get_image_detail())
+
