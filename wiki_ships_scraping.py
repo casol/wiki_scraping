@@ -1,5 +1,6 @@
 # Extracting first paragraph from ship URL
 from urllib.request import urlopen
+from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from bs4 import BeautifulSoup
 import re
@@ -32,7 +33,7 @@ def get_details(page_url):
 #get_details('/wiki/USS_Alabama_(BB-60)')
 
 
-def get_image():
+def get_image_link():
     """Find image link."""
     try:
         html = urlopen('https://en.wikipedia.org/wiki/MV_Abegweit_(1947)')
@@ -52,14 +53,14 @@ def get_image():
     except AttributeError:
         print('No Image There')
 
-url = get_image()
+url = get_image_link()
 print(url)
 
 
 def get_image_detail():
     try:
         response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=extme'
-                           'tadata&titles=File:Mikhail_Kutuzov_(cruiser).jpg&format=json').read().decode('utf-8')
+                           'tadata&titles=File:Coast_Guard_Motor_Lifeboat_CG_36500.jpg&format=json').read().decode('utf-8')
     except HTTPError:
         return print('Page does not exist')
     response_json = json.loads(response)
@@ -68,11 +69,20 @@ def get_image_detail():
     detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['ImageDescription']['value'])
     detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['Artist']['value'])
     detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['UsageTerms']['value'])
+    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseShortName']['value'])
     try:
         detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseUrl']['value'])
     except KeyError:
         pass
     return detail
 
-print(get_image_detail())
+#print(get_image_detail())
 
+
+def get_image():
+    html = urlopen('https://commons.wikimedia.org/wiki/File:Abegweit_in_chicago.jpg')
+    bs_obj = BeautifulSoup(html, 'html.parser')
+    image_location = bs_obj.find('a', {'class': 'fullMedia'}).find('href')
+    urlretrieve(image_location, 'ship.jpg')
+
+get_image()
