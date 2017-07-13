@@ -29,14 +29,11 @@ def get_details(page_url):
     except AttributeError:
         print('Something is missing!')
 
-# call
-#get_details('/wiki/USS_Alabama_(BB-60)')
-
 
 def get_image_link():
-    """Find image link."""
+    """Find wiki commons image URL."""
     try:
-        html = urlopen('https://en.wikipedia.org/wiki/MV_Abegweit_(1947)')
+        html = urlopen('https://en.wikipedia.org/wiki/SS_X-1')
     except HTTPError:
         return print('Page does not exist')
     try:
@@ -46,21 +43,21 @@ def get_image_link():
     try:
         table = bs_obj.findAll('table', {'class': 'infobox'})[0]
         td = table.find('td')
-        #print(td)
         for link in td.findAll("a", href=re.compile("^(/wiki/)")):
             if 'href' in link.attrs:
-                return 'https://commons.wikimedia.org'+link.attrs['href']
+                # e.g. File:Abegweit_in_chicago.jpg
+                return link.attrs['href']
     except AttributeError:
         print('No Image There')
 
-url = get_image_link()
-print(url)
 
-
-def get_image_detail():
+def get_image_detail(link_path):
+    """Find image detail such as usage terms, artist, image description,
+    date, license details."""
+    link_path = link_path.replace('/wiki/', '')
     try:
-        response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=extme'
-                           'tadata&titles=File:Coast_Guard_Motor_Lifeboat_CG_36500.jpg&format=json').read().decode('utf-8')
+        response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop='
+                           'extmetadata&titles='+link_path+'&format=json').read().decode('utf-8')
     except HTTPError:
         return print('Page does not exist')
     response_json = json.loads(response)
@@ -76,13 +73,31 @@ def get_image_detail():
         pass
     return detail
 
-#print(get_image_detail())
 
+def get_image(link_path):
+    """Download image."""
+    try:
+        html = urlopen('https://commons.wikimedia.org' + link_path)
+    except HTTPError:
+        return print('Page does not exist')
+    try:
+        bs_obj = BeautifulSoup(html, 'html.parser')
+    except AttributeError:
+        return None
+    try:
+        image_location = bs_obj.find('div', {'class': 'fullMedia'}).find('a')['href']
+        # maybe not original size? something small like a preview image
+        image_title = bs_obj.find('div', {'class': 'fullMedia'}).find('a')['title']
+        # print(image_location, image_title)
+        urlretrieve(image_location, image_title)
+    except AttributeError:
+        return None
 
-def get_image():
-    html = urlopen('https://commons.wikimedia.org/wiki/File:Abegweit_in_chicago.jpg')
-    bs_obj = BeautifulSoup(html, 'html.parser')
-    image_location = bs_obj.find('a', {'class': 'fullMedia'}).find('href')
-    urlretrieve(image_location, 'ship.jpg')
+# run
 
-get_image()
+url = get_image_link()
+print(url)
+
+get_image(get_image_link())
+
+print(get_image_detail(get_image_link()))
