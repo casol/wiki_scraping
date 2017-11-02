@@ -94,10 +94,11 @@ def get_image(link_path):
         return None
 
 # run
-
+"""
 url = get_image_link()
 print(url)
 
 get_image(get_image_link())
 
 print(get_image_detail(get_image_link()))
+"""
