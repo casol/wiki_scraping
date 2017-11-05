@@ -1,8 +1,7 @@
 # Scraping list of museum ships with URLs
-import re
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
-import csv
+
 import json
 import re
 import unicodedata
@@ -27,8 +26,10 @@ for tr in table.findAll('tr'):
         for link in td.findAll("a", href=re.compile("^(/wiki/)|^(/w/)|^(https)")):
             if 'href' in link.attrs:  # returns a Python dictionary object
                 wiki_url = link.attrs['href']
+
                 if wiki_url.startswith('/wiki/') or wiki_url.startswith('/w/'):
-                    wiki_url = 'https://en.wikipedia.org' + wiki_url
+                    wiki_url = wiki_url.replace('/wiki/', '')
+                    wiki_url = wiki_url.replace('/w/', '')
                 else:
                     pass
                 urls.append(wiki_url)
@@ -105,5 +106,60 @@ for ship in new_list:
 
 #print(json.dumps(database))
 
-with open('data.json', 'w') as f:
-    json.dump(database, f, ensure_ascii=False)
+ship_test = new_list[334]
+for shipx in new_list:
+
+    # get content
+    content_url_api = 'https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=' + shipx[9]
+    # get coordinates
+    coordinates_url_api = 'https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&titles=HMS_Warrior_(1860)&format=json'
+
+    content = urlopen(content_url_api).read().decode('utf-8')
+
+    response_json = json.loads(content)
+    try:
+        page_id = response_json['query']['pages'].keys()
+        for key in page_id:
+            key1 = key
+    except KeyError:
+        pass
+
+
+    try:
+        print(response_json['query']['pages'][key1]['extract'])
+    except KeyError as e:
+        pass
+
+"""
+
+database_details = []
+ship_id = 1
+for ship in new_list:
+    ship_wiki_url = ship[9]
+    try:
+        content_url_api = 'https://en.wikipedia.org/w/api.php?format=json&action=query&p/rop=extracts&exintro=&explaintext=&titles=' + ship_wiki_url
+        content = urlopen(content_url_api).read().decode('utf-8')
+        response_json = json.loads(content)
+    except:
+        pass
+    try:
+        page_id = response_json['query']['pages'].keys()
+        for key in page_id:
+            key1 = key
+    except KeyError:
+        pass
+    try:
+        print(response_json['query']['pages'][key1]['extract'])
+    except KeyError as e:
+        print('lipa')
+
+    #ship_details = {"model": "core.shipdetails", "pk": ship_id,
+                    #"fields": {"ship": ship_id,
+                               #"content": details,
+                               #"remarks": ''}}
+    #print(ship_details)
+    ship_id += 1
+
+#print(json.dumps(database_details))
+
+"""
