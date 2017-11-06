@@ -86,37 +86,18 @@ for ship in new_list:
     ii += 1
 
 
-pk = 1
-database = []
-for ship in new_list:
-    ship_dic = {"model": "core.shiplist", "pk": pk,
-                "fields": {"ship": ship[0],
-                           "country": ship[1],
-                           "region": ship[2],
-                           "city": ship[3],
-                           "from_country": ship[4],
-                           "year": ship[5],
-                           "ship_class": ship[6],
-                           "ship_type": ship[7],
-                           "remarks": ship[8],
-                           "url": ship[9],
-                           "slug": slugify(ship[0])}}
-    database.append(ship_dic)
-    pk += 1
-
-#print(json.dumps(database))
-
-ship_test = new_list[334]
+ships_content = []
 for shipx in new_list:
 
     # get content
-    content_url_api = 'https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=' + shipx[9]
+    content_url_api = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exsectionformat=plain&titles=' + shipx[9]
     # get coordinates
     coordinates_url_api = 'https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&titles=HMS_Warrior_(1860)&format=json'
-
-    content = urlopen(content_url_api).read().decode('utf-8')
-
-    response_json = json.loads(content)
+    try:
+        content = urlopen(content_url_api).read().decode('utf-8')
+        response_json = json.loads(content)
+    except:
+        pass
     try:
         page_id = response_json['query']['pages'].keys()
         for key in page_id:
@@ -124,11 +105,26 @@ for shipx in new_list:
     except KeyError:
         pass
 
-
     try:
-        print(response_json['query']['pages'][key1]['extract'])
+        ships_c = [response_json['query']['pages'][key1]['extract']]
+        ships_content.append(ships_c)
     except KeyError as e:
-        pass
+        ships_c = ['']
+        ships_content.append(ships_c)
+
+
+ship_id = 1
+database_content = []
+for ship_content in ships_content:
+    ship_details = {"model": "core.shipdetails", "pk": ship_id,
+                    "fields": {"ship": ship_id,
+                               "content": ship_content[0],
+                               "remarks": ''}}
+    database_content.append(ship_details)
+    ship_id += 1
+
+with open('data-content-full.json', 'w') as f:
+    json.dump(database_content, f, ensure_ascii=False)
 
 """
 
