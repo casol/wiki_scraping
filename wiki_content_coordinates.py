@@ -85,12 +85,12 @@ for ship in new_list:
     ship.append('')
     ii += 1
 
-
+"""
 ships_content = []
-for shipx in new_list:
+for shipx in new_list[:3]:
 
     # get content
-    content_url_api = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exsectionformat=plain&titles=' + shipx[9]
+    content_url_api = 'https://en.wikipedia.org//w/api.php?action=query&format=json&prop=extracts&redirects=1&explaintext=1&exsectionformat=plain&titles=' + shipx[9]
     # get coordinates
     coordinates_url_api = 'https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&titles=HMS_Warrior_(1860)&format=json'
     try:
@@ -106,11 +106,32 @@ for shipx in new_list:
         pass
 
     try:
-        ships_c = [response_json['query']['pages'][key1]['extract']]
-        ships_content.append(ships_c)
+        # Remove content from Wikipedia article after one of this section
+        separators = ['See also', 'References', 'Citations', 'Notes',
+                      'Gallery', 'External links', 'Further reading',
+                      'Image gallery']
+        # get article
+        content_article = response_json['query']['pages'][key1]['extract']
+        sep_id = []
+        try:
+            for separator in separators:
+                # The find() method returns the lowest index of the substring (if found). If not,  it returns -1
+                s = content_article.find(separator)
+                # check if separator exist in article
+                if s != -1:
+                    # create list of existing separators with index e.g. [[174, 'See Also'], [666, 'Notes']]
+                    sep_id.append([s, separator])
+            # find lowest index of the substring - first appearing in article e.g. [1, 'See Also']
+            separator_cut = min(sep_id)
+            # Split article and save
+            content_article_cut = content_article.split(separator_cut[1], 1)[0]
+            ships_content.append(content_article_cut)
+        except:
+            ships_content.append(content_article)
+
     except KeyError as e:
-        ships_c = ['']
-        ships_content.append(ships_c)
+        content_article = ['']
+        ships_content.append(content_article)
 
 
 ship_id = 1
@@ -123,39 +144,67 @@ for ship_content in ships_content:
     database_content.append(ship_details)
     ship_id += 1
 
-with open('data-content-full.json', 'w') as f:
+with open('data-content-full-formatted.json', 'w') as f:
     json.dump(database_content, f, ensure_ascii=False)
-
 """
 
-database_details = []
-ship_id = 1
-for ship in new_list:
-    ship_wiki_url = ship[9]
-    try:
-        content_url_api = 'https://en.wikipedia.org/w/api.php?format=json&action=query&p/rop=extracts&exintro=&explaintext=&titles=' + ship_wiki_url
-        content = urlopen(content_url_api).read().decode('utf-8')
-        response_json = json.loads(content)
-    except:
-        pass
-    try:
-        page_id = response_json['query']['pages'].keys()
-        for key in page_id:
-            key1 = key
-    except KeyError:
-        pass
-    try:
-        print(response_json['query']['pages'][key1]['extract'])
-    except KeyError as e:
-        print('lipa')
 
-    #ship_details = {"model": "core.shipdetails", "pk": ship_id,
-                    #"fields": {"ship": ship_id,
-                               #"content": details,
-                               #"remarks": ''}}
-    #print(ship_details)
-    ship_id += 1
+def ship_content_scraping():
+    ships_content = []
+    for shipx in new_list:
+        content_url_api = 'https://en.wikipedia.org//w/api.php?action=query&format=json&prop=extracts&redirects=1&explaintext=1&exsectionformat=plain&titles=' + shipx[9]
+        try:
+            content = urlopen(content_url_api).read().decode('utf-8')
+            response_json = json.loads(content)
+        except:
+            pass
+        try:
+            page_id = response_json['query']['pages'].keys()
+            for key in page_id:
+                key1 = key
+        except KeyError:
+            pass
 
-#print(json.dumps(database_details))
+        try:
+            # Remove content from Wikipedia article after one of this section
+            separators = ['See also', 'References', 'Citations', 'Notes',
+                          'Gallery', 'External links', 'Further reading', 'Image gallery']
+            # get article
+            content_article = response_json['query']['pages'][key1]['extract']
+            sep_id = []
+            try:
+                for separator in separators:
+                    # The find() method returns the lowest index of the substring (if found). If not,  it returns -1
+                    s = content_article.find(separator)
+                    # check if separator exist in article
+                    if s != -1:
+                        # create list of existing separators with index e.g. [[174, 'See Also'], [666, 'Notes']]
+                        sep_id.append([s, separator])
+                # find lowest index of the substring - first appearing in article e.g. [1, 'See Also']
+                separator_cut = min(sep_id)
+                # Split article and save
+                content_article_cut = content_article.split(separator_cut[1], 1)[0]
+                ships_content.append(content_article_cut)
+            except:
+                ships_content.append(content_article)
 
-"""
+        except KeyError as e:
+            content_article = ''
+            ships_content.append(content_article)
+
+    ship_id = 1
+    database_content = []
+    for ship_content in ships_content:
+        ship_details = {"model": "core.shipdetails", "pk": ship_id,
+                        "fields": {"ship": ship_id,
+                                   "content": ship_content,
+                                   "remarks": ''}}
+        database_content.append(ship_details)
+        ship_id += 1
+
+    with open('data-content-full-formatted.json', 'w') as f:
+        json.dump(database_content, f, ensure_ascii=False)
+
+
+# run
+ship_content_scraping()
