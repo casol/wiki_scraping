@@ -5,8 +5,6 @@ from urllib.request import urlopen
 import json
 import re
 import unicodedata
-from django.utils.text import slugify
-
 
 # open url
 html = urlopen("https://en.wikipedia.org/wiki/List_of_museum_ships")
@@ -85,92 +83,36 @@ for ship in new_list:
     ship.append('')
     ii += 1
 
-"""
-ships_content = []
-for shipx in new_list[:3]:
 
-    # get content
-    content_url_api = 'https://en.wikipedia.org//w/api.php?action=query&format=json&prop=extracts&redirects=1&explaintext=1&exsectionformat=plain&titles=' + shipx[9]
-    # get coordinates
-    coordinates_url_api = 'https://en.wikipedia.org/w/api.php?action=query&prop=coordinates&titles=HMS_Warrior_(1860)&format=json'
-    try:
-        content = urlopen(content_url_api).read().decode('utf-8')
-        response_json = json.loads(content)
-    except:
-        pass
-    try:
-        page_id = response_json['query']['pages'].keys()
-        for key in page_id:
-            key1 = key
-    except KeyError:
-        pass
-
-    try:
-        # Remove content from Wikipedia article after one of this section
-        separators = ['See also', 'References', 'Citations', 'Notes',
-                      'Gallery', 'External links', 'Further reading',
-                      'Image gallery']
-        # get article
-        content_article = response_json['query']['pages'][key1]['extract']
-        sep_id = []
-        try:
-            for separator in separators:
-                # The find() method returns the lowest index of the substring (if found). If not,  it returns -1
-                s = content_article.find(separator)
-                # check if separator exist in article
-                if s != -1:
-                    # create list of existing separators with index e.g. [[174, 'See Also'], [666, 'Notes']]
-                    sep_id.append([s, separator])
-            # find lowest index of the substring - first appearing in article e.g. [1, 'See Also']
-            separator_cut = min(sep_id)
-            # Split article and save
-            content_article_cut = content_article.split(separator_cut[1], 1)[0]
-            ships_content.append(content_article_cut)
-        except:
-            ships_content.append(content_article)
-
-    except KeyError as e:
-        content_article = ['']
-        ships_content.append(content_article)
+wiki_content_api = 'https://en.wikipedia.org//w/api.php?action=query&format=json' \
+                   '&prop=extracts&redirects=1&explaintext=1&exsectionformat=plain&titles='
+wiki_coordinates_api = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=coordinates&redirects=1&coprop=country&titles='
 
 
-ship_id = 1
-database_content = []
-for ship_content in ships_content:
-    ship_details = {"model": "core.shipdetails", "pk": ship_id,
-                    "fields": {"ship": ship_id,
-                               "content": ship_content[0],
-                               "remarks": ''}}
-    database_content.append(ship_details)
-    ship_id += 1
-
-with open('data-content-full-formatted.json', 'w') as f:
-    json.dump(database_content, f, ensure_ascii=False)
-"""
-
-
-def ship_content_scraping():
+def ship_content_scraping(content_api):
+    """Returns json file with content from each ship in table."""
     ships_content = []
-    for shipx in new_list:
-        content_url_api = 'https://en.wikipedia.org//w/api.php?action=query&format=json&prop=extracts&redirects=1&explaintext=1&exsectionformat=plain&titles=' + shipx[9]
+    for ship_url in new_list:
+        content_url_api = content_api + ship_url[9]
         try:
             content = urlopen(content_url_api).read().decode('utf-8')
             response_json = json.loads(content)
         except:
             pass
         try:
+            # find wikipedia page_id
             page_id = response_json['query']['pages'].keys()
             for key in page_id:
-                key1 = key
+                page_key = key
         except KeyError:
             pass
 
         try:
-            # Remove content from Wikipedia article after one of this section
+            # remove content from Wikipedia article after one of this section
             separators = ['See also', 'References', 'Citations', 'Notes',
                           'Gallery', 'External links', 'Further reading', 'Image gallery']
             # get article
-            content_article = response_json['query']['pages'][key1]['extract']
+            content_article = response_json['query']['pages'][page_key]['extract']
             sep_id = []
             try:
                 for separator in separators:
@@ -186,14 +128,17 @@ def ship_content_scraping():
                 content_article_cut = content_article.split(separator_cut[1], 1)[0]
                 ships_content.append(content_article_cut)
             except:
+                # probably not best way to handle exception but if something happen just add empty string and move on
                 ships_content.append(content_article)
 
         except KeyError as e:
+            # if article does not exist
             content_article = ''
             ships_content.append(content_article)
 
     ship_id = 1
     database_content = []
+    # loop through each article and create dictionary
     for ship_content in ships_content:
         ship_details = {"model": "core.shipdetails", "pk": ship_id,
                         "fields": {"ship": ship_id,
@@ -201,10 +146,59 @@ def ship_content_scraping():
                                    "remarks": ''}}
         database_content.append(ship_details)
         ship_id += 1
-
+    # create json file
     with open('data-content-full-formatted.json', 'w') as f:
         json.dump(database_content, f, ensure_ascii=False)
 
 
+def ship_coordinates_scrap(coordinates_api):
+    """Returns json file with ship museum coordinates."""
+    ships_coorinates = []
+    for ship_row in new_list:
+        content_url_api = coordinates_api + ship_row[9]
+        try:
+            coordinates = urlopen(content_url_api).read().decode('utf-8')
+            response_json = json.loads(coordinates)
+        except:
+            pass
+
+        try:
+            # find wikipedia page_id
+            page_id = response_json['query']['pages'].keys()
+            for key in page_id:
+                page_key = key
+        except KeyError:
+            pass
+
+        try:
+            coordinates_article = response_json['query']['pages'][page_key]['coordinates']
+            ships_coorinates.append([coordinates_article[0]['lat'], coordinates_article[0]['lon'], ship_row[1]])
+        except:
+            # without coordinates
+            ships_coorinates.append([None, None, ship_row[1]])
+
+    ship_id = 1
+    database_content = []
+    # loop through each article and create dictionary
+    for ship_location in ships_coorinates:
+        ship_coordinate = {"model": "core.shipcoordinates",
+                           "pk": ship_id,
+                           "fields": {
+                               "ship": ship_id,
+                               "latitude": ship_location[0],
+                               "longitude": ship_location[1],
+                               "country": ship_location[2]
+                               }
+                           }
+        database_content.append(ship_coordinate)
+        ship_id += 1
+
+    # create json file
+    with open('data-coordinates.json', 'w') as f:
+        json.dump(database_content, f, ensure_ascii=False)
+
+
+
 # run
-ship_content_scraping()
+ship_coordinates_scrap(wiki_coordinates_api)
+#ship_content_scraping(wiki_content_api)
