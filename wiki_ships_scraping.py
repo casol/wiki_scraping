@@ -33,7 +33,7 @@ def get_details(page_url):
 def get_image_link():
     """Find wiki commons image URL."""
     try:
-        html = urlopen('https://en.wikipedia.org/wiki/SS_X-1')
+        html = urlopen('https://en.wikipedia.org/wiki/HMCS_Bras_d%27Or_(FHE_400)')
     except HTTPError:
         return print('Page does not exist')
     try:
@@ -62,11 +62,42 @@ def get_image_detail(link_path):
         return print('Page does not exist')
     response_json = json.loads(response)
     detail = list()
-    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['DateTimeOriginal']['value'])
-    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['ImageDescription']['value'])
-    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['Artist']['value'])
-    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['UsageTerms']['value'])
-    detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseShortName']['value'])
+    try:
+        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['DateTimeOriginal']['value'])
+    except KeyError:
+        pass
+    try:
+        # remove hyperlinks from text
+        image_description = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['ImageDescription']['value']
+        soup_description = BeautifulSoup(image_description, 'html.parser')
+        # find only text in tags
+        image_description_formatted = soup_description.findAll(text=True)
+        # return list of formatted text
+        # join text from list
+        text = ''.join(image_description_formatted)
+        detail.append(text)
+    except:
+        pass
+    try:
+        # remove hyperlinks from text
+        artist_details = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['Artist']['value']
+        soup = BeautifulSoup(artist_details, 'html.parser')
+        # find only text in tags
+        artist_details_formatted = soup.findAll(text=True)
+        # return list of formatted text
+        # join text from list
+        text = ''.join(artist_details_formatted)
+        detail.append(text)
+    except:
+        pass
+    try:
+        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['UsageTerms']['value'])
+    except:
+        pass
+    try:
+        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseShortName']['value'])
+    except:
+        pass
     try:
         detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseUrl']['value'])
     except KeyError:
@@ -94,11 +125,10 @@ def get_image(link_path):
         return None
 
 # run
-"""
+
 url = get_image_link()
 print(url)
 
 get_image(get_image_link())
 
 print(get_image_detail(get_image_link()))
-"""

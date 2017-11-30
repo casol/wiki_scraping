@@ -103,7 +103,6 @@ for ship in new_list:
     database.append(ship_dic)
     pk += 1
 
-#print(json.dumps(database))
 
 with open('data.json', 'w') as f:
     json.dump(database, f, ensure_ascii=False)
