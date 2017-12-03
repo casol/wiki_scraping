@@ -58,23 +58,22 @@ urls.insert(530, 'https://en.wikipedia.org/wiki/VIC_56')
 urls.insert(539, 'https://en.wikipedia.org/wiki/Weilheim_M1077')
 urls.insert(554, 'https://en.wikipedia.org/wiki/PLAN_Xiamen_515')
 
-x = 1
-for url in urls:
-    print(x, url)
-    x += 1
-
 
 def get_image_link():
     """Find wiki commons image URL."""
+    wiki_commons_img = []
+    ship_id = 0
     for ship_url in urls:
+        ship_id += 1
         # check if link starts with https
         if ship_url.startswith('https'):
             try:
-                html_ship = ship_url
+                html_ship = urlopen(ship_url)
             except:
                 pass
         else:
             try:
+                # e.g. HMAS_Advance_(P_83)
                 html_ship = urlopen('https://en.wikipedia.org/wiki/' + ship_url)
             except:
                 pass
@@ -83,113 +82,128 @@ def get_image_link():
         except:
             pass
         try:
+            # find infobox with image
             info_table = ship_bs_obj.findAll('table', {'class': 'infobox'})[0]
             info_td = info_table.find('td')
             for img_link in info_td.findAll("a", href=re.compile("^(/wiki/)")):
                 if 'href' in img_link.attrs:
                     # e.g. File:Abegweit_in_chicago.jpg
-                    return img_link.attrs['href']
+                    if img_link.attrs['href'].startswith('/wiki/File:'):
+                        # e.g. [2, '/wiki/File:Abegweit_in_chicago.jpg']
+                        wiki_commons_img.append([ship_id, img_link.attrs['href']])
         except:
             # no image, move on
             pass
+    return wiki_commons_img
 
 
-def get_image_detail(link_path):
+def get_image_detail(wiki_commons_img):
     """Find image detail such as usage terms, artist, image description,
     date, license details."""
-    link_path = link_path.replace('/wiki/', '')
-    try:
-        response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop='
-                           'extmetadata&titles='+link_path+'&format=json').read().decode('utf-8')
-    except HTTPError:
-        return print('Page does not exist')
-    response_json = json.loads(response)
-    detail = list()
-    try:
-        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['DateTimeOriginal']['value'])
-    except KeyError:
-        pass
-    try:
-        # remove hyperlinks from text
-        image_description = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['ImageDescription']['value']
-        soup_description = BeautifulSoup(image_description, 'html.parser')
-        # find only text in tags
-        image_description_formatted = soup_description.findAll(text=True)
-        # return list of formatted text
-        # join text from list
-        text = ''.join(image_description_formatted)
-        detail.append(text)
-    except:
-        pass
-    try:
-        # remove hyperlinks from text
-        artist_details = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['Artist']['value']
-        soup = BeautifulSoup(artist_details, 'html.parser')
-        # find only text in tags
-        artist_details_formatted = soup.findAll(text=True)
-        # return list of formatted text
-        # join text from list
-        text = ''.join(artist_details_formatted)
-        detail.append(text)
-    except:
-        pass
-    try:
-        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['UsageTerms']['value'])
-    except:
-        pass
-    try:
-        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseShortName']['value'])
-    except:
-        pass
-    try:
-        detail.append(response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseUrl']['value'])
-    except KeyError:
-        pass
-    return detail
+    database_img_content = []
+    for ship in wiki_commons_img:
+        # e.g. /wiki/File:Abegweit_in_chicago.jpg
+        link_path = ship[1].replace('/wiki/', '')
+        try:
+            response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop='
+                               'extmetadata&titles='+link_path+'&format=json').read().decode('utf-8')
+        except HTTPError:
+            return print('Page does not exist')
+        response_json = json.loads(response)
+        detail = list()
+        try:
+            date_time_original = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['DateTimeOriginal']['value']
+        except KeyError:
+            date_time_original = ''
+        try:
+            # remove hyperlinks from text
+            image_description = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['ImageDescription']['value']
+            soup_description = BeautifulSoup(image_description, 'html.parser')
+            # find only text in tags
+            image_description_formatted = soup_description.findAll(text=True)
+            # return list of formatted text
+            # join text from list
+            text = ''.join(image_description_formatted)
+            image_description = text
+        except:
+            image_description = ''
+        try:
+            # remove hyperlinks from text
+            artist_details = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['Artist']['value']
+            soup = BeautifulSoup(artist_details, 'html.parser')
+            # find only text in tags
+            artist_details_formatted = soup.findAll(text=True)
+            # return list of formatted text
+            # join text from list
+            text = ''.join(artist_details_formatted)
+            artist_details = text
+        except:
+            artist_details = ''
+        try:
+            usage_terms = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['UsageTerms']['value']
+        except:
+            usage_terms = ''
+        try:
+            license_short_name = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseShortName']['value']
+        except:
+            license_short_name = ''
+        try:
+            license_url = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['LicenseUrl']['value']
+        except KeyError:
+            license_url = ''
+        try:
+            # format title
+            title = response_json['query']['pages']['-1']['title']
+            title = title.replace('File:', '')
+            title = title.replace('.jpg', '')
+        except:
+            title = ''
+        # create data for model
+        ship_img_details = {"model": "core.shipimage",
+                            "pk": ship[0],
+                            "fields": {
+                               "ship": ship[0],
+                               "image": link_path.replace('File:', ''),
+                               "title": title,
+                               "image_description": image_description,
+                               "artist": artist_details,
+                               "created": date_time_original,
+                               "source_url": 'https://commons.wikimedia.org'+ship[1],
+                               "usage_terms": usage_terms,
+                               "license_url": license_url,
+                               "license_short_name": license_short_name}}
+        database_img_content.append(ship_img_details)
+    # create json file
+    with open('database_img_content.json', 'w') as f:
+        json.dump(database_img_content, f, ensure_ascii=False)
 
 
-def get_image(link_path):
+def get_image(img_links):
     """Download image."""
-    try:
-        html = urlopen('https://commons.wikimedia.org' + link_path)
-    except HTTPError:
-        return print('Page does not exist')
-    try:
-        bs_obj = BeautifulSoup(html, 'html.parser')
-    except AttributeError:
-        return None
-    try:
-        image_location = bs_obj.find('div', {'class': 'fullMedia'}).find('a')['href']
-        # maybe not original size? something small like a preview image
-        image_title = bs_obj.find('div', {'class': 'fullMedia'}).find('a')['title']
-        # save to
-        my_path = '/home/christopher/Desktop/wiki_scraping/wiki_images'
-        full_file_name = os.path.join(my_path, image_title)
-        urlretrieve(image_location, full_file_name)
-    except AttributeError:
-        return None
+    for img_link in img_links:
+        try:
+            html = urlopen('https://commons.wikimedia.org' + img_link[1])
+        except HTTPError:
+            print(img_link)
+            pass
+        try:
+            bs_obj = BeautifulSoup(html, 'html.parser')
+        except AttributeError:
+            pass
+        try:
+            image_location = bs_obj.find('div', {'class': 'fullMedia'}).find('a')['href']
+            # image_title = bs_obj.find('div', {'class': 'fullMedia'}).find('a')['title']
+            image_title = img_link[1].replace('/wiki/File:', '')
+            # save to
+            my_path = '/home/christopher/Desktop/wiki_scraping/wiki_images'
+            full_file_name = os.path.join(my_path, image_title)
+            urlretrieve(image_location, full_file_name)
+        except AttributeError:
+            pass
 
 # run
+img_links = get_image_link()
 
-#url = get_image_link()
-#print(url)
+get_image(img_links)
 
-#get_image(get_image_link())
-
-#print(get_image_detail(get_image_link()))
-'''
-ship_coordinate = {"model": "core.core.shipimage",
-                   "pk": ship_id,
-                   "fields": {
-                       "ship": ship_id,
-                       "image": ship_location[0],
-                       "title": ship_location[1],
-                       "image_description": ship_location[2],
-                       "artist": ship_location[1],
-                       "created": ship_location[1],
-                       "source_url": ship_location[1],
-                       "slug": ship_location[1],
-                       "usage_terms": ship_location[1],
-                        "license_url": ship_location[1],
-                       "license_short_name": ship_location[1]}}
-'''
+get_image_detail(img_links)
