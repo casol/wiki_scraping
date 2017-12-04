@@ -1,4 +1,3 @@
-# Extracting first paragraph from ship URL
 from urllib.request import urlopen
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
@@ -94,6 +93,7 @@ def get_image_link():
         except:
             # no image, move on
             pass
+    # return list of wiki commons URLS
     return wiki_commons_img
 
 
@@ -105,12 +105,13 @@ def get_image_detail(wiki_commons_img):
         # e.g. /wiki/File:Abegweit_in_chicago.jpg
         link_path = ship[1].replace('/wiki/', '')
         try:
+            # retrieve data from Wikipedia API
             response = urlopen('https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop='
                                'extmetadata&titles='+link_path+'&format=json').read().decode('utf-8')
         except HTTPError:
             return print('Page does not exist')
         response_json = json.loads(response)
-        detail = list()
+        # parsing JSON
         try:
             date_time_original = response_json['query']['pages']['-1']['imageinfo'][0]["extmetadata"]['DateTimeOriginal']['value']
         except KeyError:
@@ -163,7 +164,7 @@ def get_image_detail(wiki_commons_img):
                             "pk": ship[0],
                             "fields": {
                                "ship": ship[0],
-                               "image": link_path.replace('File:', ''),
+                               "image": link_path.replace('File:', 'images/'),
                                "title": title,
                                "image_description": image_description,
                                "artist": artist_details,
@@ -183,7 +184,7 @@ def get_image(img_links):
     for img_link in img_links:
         try:
             html = urlopen('https://commons.wikimedia.org' + img_link[1])
-        except HTTPError:
+        except:
             print(img_link)
             pass
         try:
